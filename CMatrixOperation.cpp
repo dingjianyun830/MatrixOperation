@@ -1,4 +1,3 @@
-#include "stdafx.h"
 #include "Math.h"
 #include "CMatrixOperation.h"
 
@@ -15,7 +14,7 @@ Mat Matproduct(Mat src1, Mat src2)
 			{
 				for (int k = 0; k < src1.n; k++)
 				{
-					dst.data[i][j] += src1.data[i+k][j] * src2.data[i][j+k];
+					dst.data[i][j] += src1.data[k][j] * src2.data[i][k];
 				}		
 			}
 		}
@@ -175,6 +174,7 @@ Mat MatCopy(Mat src)
 			dst.data[i][j] = src.data[i][j];
 		}
 	}
+	return dst;
 }
 
 double MatDet(Mat src)
@@ -185,12 +185,12 @@ double MatDet(Mat src)
 	f = 1;
 	double det = 1;
 	int n = src.m;
-	for (k = 0; k < n - 2; k++)
+	for (k = 0; k <= n - 2; k++)
 	{
 		q = 0;
 		for (i = k; i <= n - 1; i++)
 		{
-			for (j = k; k < n - 1;j++)
+			for (j = k; k <= n - 1;j++)
 			{
 				d = fabs(src.data[i][j]);
 				if (d > q)
@@ -236,7 +236,7 @@ double MatDet(Mat src)
 			for (i = k + 1; i <= n - 1; i++)
 			{
 				d = src.data[i][k] / src.data[k][k];
-				for (j = k + 1; j <= n - 1; i++)
+				for (j = k + 1; j <= n - 1; j++)
 				{
 					src.data[i][j] = src.data[i][j] - d*src.data[k][j];
 				}
@@ -744,13 +744,13 @@ bool MatUaV(Mat src, Mat dstU, Mat dstV)
 		if (mm == 0)
 		{
 			ppp(src, dstV, s, e);
-			return;
+			return 1;
 		}
 		if (it == 0)
 		{
 			ppp(src, dstV, s, e);
 			//error
-			return;
+			return 0;
 		}
 		kk = mm - 1;
 		while ((kk != 0) && (fabs(e[kk - 1]) != 0))
@@ -1055,4 +1055,241 @@ void sss(double fg[2], double cs[2])
 	}
 	fg[0] = d;
 	fg[1] = r;
+}
+
+void Mat::MatPrint()
+{
+	for (int i = 0; i < m; i++)
+	{
+		for (int j = 0; j < n; j++)
+		{
+			cout << data[i][j] << "   ";
+		}
+		cout << endl;
+	}
+	cout << "________________________" << endl;
+}
+
+bool Mat::TransDataToMex(Mat A, double *src)
+{
+	for (int i = 0; i < m; i++)
+	{
+		for (int j = 0; j < n; j++)
+		{
+			src[j*n+i] = A.data[i][j];
+		}
+	}
+	return true;
+}
+
+bool MatGauss(Mat A, Mat b, int n)
+{
+	int *js;
+	int l, k, i, j, is;
+	double d, t;
+	js = new int[n];
+	l = 1;
+	for (k = 0; k <= n - 2; k++)
+	{
+		d = 0;
+		for (i = k; i <= n - 1; i++)
+		{
+			for (j = k; j <= n - 1; j++)
+			{
+				t = fabs(A.data[i][j]);
+				if (t > d)
+				{
+					d = t;
+					js[k] = j; 
+					is = i;
+				}
+			}
+		}
+		if (d + 1 == 1)
+		{
+			l = 0;
+		}
+		else
+		{
+			if (js[k] != k)
+			{
+				for (i = 0; i <= n - 1; i++)
+				{
+					t = A.data[i][k];
+					A.data[i][k] = A.data[i][js[k]];
+					A.data[i][js[k]] = t;
+				}
+
+				if (is != k)
+				{
+					for (j = k; j <= n - 1; j++)
+					{
+						t = A.data[k][j];
+						A.data[k][j] = A.data[is][j];
+						A.data[is][j] = t;
+					}
+					t = b.data[1][k];
+					b.data[1][k] = b.data[1][is];
+					b.data[1][is] = t;
+				}
+			}
+		}
+		if (l == 0)
+		{
+			delete[] js;
+
+			return false;
+		}
+		d = A.data[k][k];
+		for (j = k + 1; j <= n - 1; j++)
+		{
+			A.data[k][j] = A.data[k][j] / d;
+		}
+		b.data[1][k] = b.data[1][k] / d;
+		for (i = k + 1; i <= n - 1; i++)
+		{
+			for (j = k + 1; j <= n - 1; j++)
+			{
+				A.data[i][j] = A.data[i][j] - A.data[i][k] * A.data[k][j];
+			}
+			b.data[1][i] = b.data[1][i] - A.data[i][k] * b.data[1][k];
+		}
+	}
+	d = A.data[n - 1][n - 1];
+	if (fabs(d) + 1 == 1)
+	{
+		delete[] js;
+		return 0;
+	}
+	b.data[1][n - 1] = b.data[1][n - 1] / d;
+	for (i = n - 2; i >= 0; i--)
+	{
+		t = 0;
+		for (j = i + 1; j <= n - 1; j++)
+		{
+			t = t + A.data[i][j] * b.data[1][js[k]];
+		}
+		b.data[1][i] = b.data[1][i] - t;
+	}
+	js[n - 1] = n - 1;
+	for (k = n - 1; k >= 0; k--)
+	{
+		if (js[k] != k)
+		{
+			t = b.data[i][k];
+			b.data[1][k] = b.data[1][js[k]];
+			b.data[1][js[k]] = t;
+		}
+	}
+	delete [] js;
+}
+
+bool MatGausJordan(Mat A, Mat B, int n, int m) 
+{
+	int *js;
+	int l, k, i, j, is;
+	double d, t;
+	js = new int[n];
+	l = 1;
+	for (k = 0; k <= n - 1; k++)
+	{
+		d = 0;
+		for (i = k; i <= n - 1; i++)
+		{
+			for (j = k; j <= n - 1; j++)
+			{
+				t = fabs(A.data[i][j]);
+				if (t > d)
+				{
+					d = t;
+					js[k] = j; 
+					is = i;
+				}
+			}
+		}
+		if (d + 1 == 1)
+		{
+			l = 0;
+		}
+		else
+		{
+			if (js[k] != k)
+			{
+				for (i = 0; i <= n - 1; i++)
+				{
+					t = A.data[i][k];
+					A.data[i][k] = A.data[i][js[k]];
+					A.data[i][js[k]] = t;
+				}
+			}
+			if (is != k)
+			{
+				for (j = k; j <= n - 1; j++)
+				{
+					t = A.data[k][j];
+					A.data[k][j] = A.data[is][j];
+					A.data[is][j] = t;
+				}
+				for (j = 0; j <= m - 1; j++)
+				{
+					t = B.data[k][j];
+					B.data[k][j] = B.data[is][j];
+					B.data[is][j] = t;
+				}
+			}
+		}
+		
+		if (l == 0)
+		{
+			delete[] js;
+			return 0;
+		}
+
+		d = A.data[k][k];
+		for (j = k + 1; j <= n - 1; j++)
+		{
+			A.data[k][j] = A.data[k][j] / d;
+		}
+		for (j = 0; j <= m - 1; j++)
+		{
+			B.data[k][j] = B.data[k][j] / d;
+		}
+
+		for (j = k + 1; j <= n - 1; j++)
+		{
+			for (i = 0; i <= n - 1; i++)
+			{
+				if (i != k)
+				{
+					A.data[i][j] = A.data[i][j] - A.data[i][k] * A.data[k][j];
+				}
+			}
+		}
+
+		for (j = 0; j <= m - 1; j++)
+		{
+			for (i = 0; i <= n - 1; i++)
+			{
+				if (i != k)
+				{
+					B.data[i][j] = B.data[i][j] - A.data[i][k] * B.data[k][j];
+				}
+			}
+		}
+	}
+
+	for (k = n - 1; k >= 0; k--)
+	{
+		if (js[k] != k)
+		{
+			for (j = 0; j <= m - 1; j++)
+			{
+				t = B.data[k][j];
+				B.data[k][j] = B.data[js[k]][j];
+				B.data[js[k]][j] = t;
+			}
+		}
+	}
+
+	delete[] js;
 }
